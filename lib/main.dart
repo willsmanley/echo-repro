@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as livekit;
@@ -15,12 +16,18 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Echo Cancellation Bug Repro'),
+          title: Text('Publish Data Bug Repro'),
         ),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: initializeLivekitCall,
-            child: Text('Start Call'),
+        body: const Center(
+          child: Row(
+            children: [
+              ElevatedButton(
+                onPressed: initializeLivekitCall,
+                child: Text('Start Call'),
+              ),
+              ElevatedButton(onPressed: sendOneBytePayload, child: Text('Send 1b Payload')),
+              ElevatedButton(onPressed: sendTwoKbPayload, child: Text('Send 2kb Payload'))
+            ],
           ),
         ),
       ),
@@ -104,14 +111,21 @@ void handleAudioEvents() {
   });
 }
 
+void sendOneBytePayload() async {
+  const bytes = 1;
+    await _room?.localParticipant?.publishData(Uint8List.fromList(('a' * bytes).codeUnits));
+}
+
+void sendTwoKbPayload() async {
+  const bytes = 1024 * 2;
+    await _room?.localParticipant?.publishData(Uint8List.fromList(('a' * bytes).codeUnits));
+}
+
 void initializeLivekitCall() async {
-  String accessToken;
-  String url = 'https://kitt.livekit.io/api/token';
-  var response = await http.post(
-    Uri.parse(url),
-  );
-  var responseData = jsonDecode(response.body);
-  accessToken = responseData['accessToken'];
-  var roomUrl = 'wss://python-agents-kitt-idz0ds17.livekit.cloud';
-  startCallFromToken(accessToken, roomUrl);
+    final response =
+      await http.Client().get(Uri.parse('http://127.0.0.1:8081/token'));
+  final responseData = jsonDecode(response.body);
+  final accessToken = responseData['accessToken'];
+  final url = responseData['url'];
+  startCallFromToken(accessToken, url);
 }
